@@ -32,11 +32,12 @@
 
 int mca_fs_ufs_priority = 10;
 int mca_fs_ufs_lock_algorithm=0; /* auto */
+int mca_fs_ufs_use_directio=0;
+
 /*
  * Private functions
  */
 static int register_component(void);
-
 
 /*
  * Public string showing the fs ufs component version number
@@ -90,6 +91,12 @@ static int register_component(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_fs_ufs_lock_algorithm );
+    mca_fs_ufs_use_directio = 0;
+    (void) mca_base_component_var_register (&mca_fs_ufs_component.fsm_version,
+                                            "use_directio", "whether to use direct I/O",
+                                            MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY, &mca_fs_ufs_use_directio);
 
     return OMPI_SUCCESS;
 }

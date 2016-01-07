@@ -48,8 +48,9 @@ mca_fs_ufs_file_open (struct ompi_communicator_t *comm,
 		      struct opal_info_t *info,
 		      ompio_file_t *fh)
 {
-    int amode, perm;
+    int amode, amode_direct, perm;
     int ret=OMPI_SUCCESS;
+    int fd_direct;
 
     perm = mca_fs_base_get_file_perm(fh);
     amode = mca_fs_base_get_file_amode(fh->f_rank, access_mode);
@@ -79,12 +80,13 @@ mca_fs_ufs_file_open (struct ompi_communicator_t *comm,
     fh->f_stripe_size=0;
     fh->f_stripe_count=1;
 
+    amode_direct = amode | O_DIRECT;
+
     /* Need to check for NFS here. If the file system is not NFS but a regular UFS file system,
        we do not need to enforce locking. A regular XFS or EXT4 file system can only be used 
        within a single node, local environment, and in this case the OS will already ensure correct
        handling of file system blocks;
     */
-
     if ( FS_UFS_LOCK_AUTO == mca_fs_ufs_lock_algorithm ) {       
         char *fstype=NULL;
         bool bret = opal_path_nfs ( (char *)filename, &fstype );
@@ -126,6 +128,14 @@ mca_fs_ufs_file_open (struct ompi_communicator_t *comm,
     }
     else {
         opal_output ( 1, "Invalid value for mca_fs_ufs_lock_algorithm %d", mca_fs_ufs_lock_algorithm );
+    }
+
+
+    if ( mca_fs_ufs_use_directio ) {
+        fd_direct = open ( filename, amode_direct, perm);
+        if ( -1 != fd_direct ) {
+            memcpy ( &fh->f_fs_ptr, &fd_direct, sizeof(int));
+        }
     }
 
     return OMPI_SUCCESS;

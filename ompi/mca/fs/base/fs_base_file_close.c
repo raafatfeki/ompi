@@ -47,5 +47,13 @@ int mca_fs_base_file_close (ompio_file_t *fh)
         free (fh->fd);
         fh->fd = NULL;
         }*/
+
+    if (0 != fh->f_fs_ptr ) {
+        int fs_ptr;
+        memcpy ( &fs_ptr, &fh->f_fs_ptr, sizeof(int));
+//        fsync ( fs_ptr );
+        close (fs_ptr );
+    }
+
     return OMPI_SUCCESS;
 }

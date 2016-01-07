@@ -30,6 +30,7 @@
 
 extern int mca_fs_ufs_priority;
 extern int mca_fs_ufs_lock_algorithm;
+extern int mca_fs_ufs_use_directio;
 
 #define FS_UFS_LOCK_AUTO        0
 #define FS_UFS_LOCK_NEVER       1
