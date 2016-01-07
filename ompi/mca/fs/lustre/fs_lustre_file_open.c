@@ -64,17 +64,19 @@ mca_fs_lustre_file_open (struct ompi_communicator_t *comm,
                      struct opal_info_t *info,
                      ompio_file_t *fh)
 {
-    int amode, perm;
+    int amode, amode_direct, perm;
     int rc, ret=OMPI_SUCCESS;
     int flag;
     int fs_lustre_stripe_size = -1;
     int fs_lustre_stripe_width = -1;
     char char_stripe[MPI_MAX_INFO_KEY];
+    int fd_direct;
 
     struct lov_user_md *lump=NULL;
 
     perm = mca_fs_base_get_file_perm(fh);
     amode = mca_fs_base_get_file_amode(fh->f_rank, access_mode);
+    amode_direct = amode | O_DIRECT;
 
     opal_info_get (info, "stripe_size", MPI_MAX_INFO_VAL, char_stripe, &flag);
     if ( flag ) {
@@ -141,10 +143,18 @@ mca_fs_lustre_file_open (struct ompi_communicator_t *comm,
         opal_output(1, "get_stripe failed: %d (%s)\n", errno, strerror(errno));
         return OMPI_ERROR;
     }
+
     fh->f_stripe_size   = lump->lmm_stripe_size;
     fh->f_stripe_count  = lump->lmm_stripe_count;
     fh->f_fs_block_size = lump->lmm_stripe_size;
     fh->f_flags |= OMPIO_LOCK_NEVER;
     
+    if ( mca_fs_lustre_use_directio ) {
+        fd_direct = open ( filename, amode_direct, perm);
+        if ( -1 != fd_direct ) {
+            memcpy ( &fh->f_fs_ptr, &fd_direct, sizeof(int));
+        }
+    }
+
     return OMPI_SUCCESS;
 }
