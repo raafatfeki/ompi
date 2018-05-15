@@ -190,9 +190,17 @@ void orte_plm_base_allocation_complete(int fd, short args, void *cbdata)
 
     ORTE_ACQUIRE_OBJECT(caddy);
 
-    /* move the state machine along */
-    caddy->jdata->state = ORTE_JOB_STATE_ALLOCATION_COMPLETE;
-    ORTE_ACTIVATE_JOB_STATE(caddy->jdata, ORTE_JOB_STATE_LAUNCH_DAEMONS);
+    /* if we don't want to launch, then we at least want
+     * to map so we can see where the procs would have
+     * gone - so skip to the mapping state */
+    if (orte_do_not_launch) {
+        caddy->jdata->state = ORTE_JOB_STATE_ALLOCATION_COMPLETE;
+        ORTE_ACTIVATE_JOB_STATE(caddy->jdata, ORTE_JOB_STATE_MAP);
+    } else {
+        /* move the state machine along */
+        caddy->jdata->state = ORTE_JOB_STATE_ALLOCATION_COMPLETE;
+        ORTE_ACTIVATE_JOB_STATE(caddy->jdata, ORTE_JOB_STATE_LAUNCH_DAEMONS);
+    }
 
     /* cleanup */
     OBJ_RELEASE(caddy);
@@ -1116,10 +1124,12 @@ void orte_plm_base_daemon_callback(int status, orte_process_name_t* sender,
                 opal_argv_append_nosize(&atmp, alias);
                 free(alias);
             }
-            alias = opal_argv_join(atmp, ',');
+            if (0 < naliases) {
+                alias = opal_argv_join(atmp, ',');
+                orte_set_attribute(&daemon->node->attributes, ORTE_NODE_ALIAS, ORTE_ATTR_LOCAL, alias, OPAL_STRING);
+                free(alias);
+            }
             opal_argv_free(atmp);
-            orte_set_attribute(&daemon->node->attributes, ORTE_NODE_ALIAS, ORTE_ATTR_LOCAL, alias, OPAL_STRING);
-            free(alias);
         }
 
         /* unpack the topology signature for that node */
@@ -2124,6 +2134,11 @@ int orte_plm_base_setup_virtual_machine(orte_job_t *jdata)
             if (!ORTE_FLAG_TEST(node, ORTE_NODE_FLAG_MAPPED)) {
                 opal_list_remove_item(&nodes, item);
                 OBJ_RELEASE(item);
+            } else {
+                /* The filtering logic sets this flag only for nodes which 
+                 * are kept after filtering. This flag will be subsequently
+                 * used in rmaps components and must be reset here */
+                ORTE_FLAG_UNSET(node, ORTE_NODE_FLAG_MAPPED);
             }
             item = next;
         }

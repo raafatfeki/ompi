@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
+ * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
  * Copyright (c) 2004-2006 The University of Tennessee and The University
@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008      University of Houston. All rights reserved.
+ * Copyright (c) 2016-2017 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -17,21 +17,18 @@
  * $HEADER$
  */
 
-#ifndef MCA_SHAREDFP_addproc_control_H
-#define MCA_SHAREDFP_addproc_control_H
+#ifndef PMIX_BFROPS_PMIX3_H
+#define PMIX_BFROPS_PMIX3_H
 
-#include <stdbool.h>
-#include "mpi.h"
-#include "sharedfp_addproc.h"
+#include "src/mca/bfrops/bfrops.h"
 
 BEGIN_C_DECLS
 
-void nodeDelete(node **front, node **rear);
-void nodeInsert(node **front, node **rear, int procNo, long numBytesArrAddr);
-int Check_Request_Offset(int tag_received);
-int Check_Acknowledgement(int tag_received);
-int End_control_shared_request(int tag_received);
+/* the component must be visible data for the linker to find it */
+ PMIX_EXPORT extern pmix_bfrops_base_component_t mca_bfrops_v3_component;
+
+extern pmix_bfrops_module_t pmix_bfrops_pmix3_module;
 
 END_C_DECLS
 
-#endif /* MCA_SHAREDFP_addproc_control_H */
+#endif /* PMIX_BFROPS_PMIX3_H */

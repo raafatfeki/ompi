@@ -17,6 +17,7 @@
  * Copyright (c) 2015      NVIDIA Corporation.  All rights reserved.
  * Copyright (c) 2015-2017 Intel, Inc. All rights reserved.
  * Copyright (c) 2016-2017 IBM Corporation. All rights reserved.
+ * Copyright (c) 2018      Cisco Systems, Inc.  All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -543,11 +544,10 @@ static int allocate_state_shared (ompi_osc_rdma_module_t *module, void **base, s
     unsigned long offset, total_size;
     unsigned long state_base, data_base;
     int local_rank, local_size, ret;
-    size_t local_rank_array_size, leader_peer_data_size;
+    size_t local_rank_array_size, leader_peer_data_size, my_base_offset = 0;
     int my_rank = ompi_comm_rank (module->comm);
     int global_size = ompi_comm_size (module->comm);
     ompi_osc_rdma_region_t *state_region;
-    int my_base_offset = 0;
     struct _local_data *temp;
     char *data_file;
 
@@ -775,10 +775,12 @@ static int ompi_osc_rdma_query_mtls (void)
     if (mtls_to_use && ompi_mtl_base_selected_component) {
 	for (int i = 0 ; mtls_to_use[i] ; ++i) {
 	    if (0 == strcmp (mtls_to_use[i], ompi_mtl_base_selected_component->mtl_version.mca_component_name)) {
+                opal_argv_free(mtls_to_use);
 		return OMPI_SUCCESS;
 	    }
 	}
     }
+    opal_argv_free(mtls_to_use);
     return -1;
 }
 

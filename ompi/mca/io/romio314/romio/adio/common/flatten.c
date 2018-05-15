@@ -14,6 +14,90 @@
   #define FLATTEN_DEBUG 1
 #endif
 
+struct adio_short_int {
+  short elem_s;
+  int elem_i;
+};
+
+struct adio_double_int {
+  double elem_d;
+  int elem_i;
+};
+
+struct adio_long_int {
+  long elem_l;
+  int elem_i;
+};
+
+struct adio_long_double_int {
+  long double elem_ld;
+  int elem_i;
+};
+
+int ADIOI_Type_get_envelope (MPI_Datatype datatype, int *num_integers,
+                             int *num_addresses, int *num_datatypes, int *combiner)
+{
+  int rc, is_contig;
+
+  ADIOI_Datatype_iscontig(datatype, &is_contig);
+
+  rc = MPI_Type_get_envelope (datatype, num_integers, num_addresses, num_datatypes, combiner);
+  if (MPI_SUCCESS != rc || MPI_COMBINER_NAMED != *combiner || is_contig) {
+    return rc;
+  }
+
+  if (MPI_SHORT_INT == datatype || MPI_DOUBLE_INT == datatype || MPI_LONG_DOUBLE_INT == datatype ||
+      MPI_LONG_INT == datatype) {
+      *num_integers = 2;
+      *num_addresses = 2;
+      *num_datatypes = 2;
+      *combiner = MPI_COMBINER_STRUCT;
+  }
+
+  return rc;
+}
+
+int ADIOI_Type_get_contents (MPI_Datatype datatype, int max_integers,
+                             int max_addresses, int max_datatypes, int array_of_integers[],
+                             MPI_Aint array_of_addresses[], MPI_Datatype array_of_datatypes[])
+{
+  int dontcare, combiner;
+  int rc;
+
+  rc = MPI_Type_get_envelope (datatype, &dontcare, &dontcare, &dontcare, &combiner);
+  if (MPI_SUCCESS != rc) {
+    return rc;
+  }
+
+  if (MPI_COMBINER_NAMED != combiner) {
+    return MPI_Type_get_contents (datatype, max_integers, max_addresses, max_datatypes,
+                                  array_of_integers, array_of_addresses, array_of_datatypes);
+  }
+
+  array_of_integers[0] = 1;
+  array_of_integers[1] = 1;
+  array_of_addresses[0] = 0;
+  array_of_datatypes[1] = MPI_INT;
+
+  if (MPI_SHORT_INT == datatype) {
+      array_of_datatypes[0] = MPI_SHORT;
+      array_of_addresses[1] = offsetof (struct adio_short_int, elem_i);
+  } else if (MPI_DOUBLE_INT == datatype) {
+      array_of_datatypes[0] = MPI_DOUBLE;
+      array_of_addresses[1] = offsetof (struct adio_double_int, elem_i);
+  } else if (MPI_LONG_DOUBLE_INT == datatype) {
+      array_of_datatypes[0] = MPI_LONG_DOUBLE;
+      array_of_addresses[1] = offsetof (struct adio_long_double_int, elem_i);
+  } else if (MPI_LONG_INT == datatype) {
+      array_of_datatypes[0] = MPI_LONG;
+      array_of_addresses[1] = offsetof (struct adio_long_int, elem_i);
+  } else {
+    rc = MPI_ERR_TYPE;
+  }
+
+  return rc;
+}
+
 void ADIOI_Optimize_flattened(ADIOI_Flatlist_node *flat_type);
 /* flatten datatype and add it to Flatlist */
 void ADIOI_Flatten_datatype(MPI_Datatype datatype)
@@ -114,15 +198,19 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
          avoid >2G integer arithmetic problems */
     ADIO_Offset top_count;
     MPI_Count j, old_size, prev_index, num;
-    MPI_Aint old_extent;/* Assume extents are non-negative */
+    MPI_Aint old_extent, lb;/* Assume extents are non-negative */
     int *ints;
     MPI_Aint *adds; /* Make no assumptions about +/- sign on these */
     MPI_Datatype *types;
-    MPI_Type_get_envelope(datatype, &nints, &nadds, &ntypes, &combiner);
+    ADIOI_Type_get_envelope(datatype, &nints, &nadds, &ntypes, &combiner);
+    if (combiner == MPI_COMBINER_NAMED) {
+        return;  /* can't do anything else: calling get_contents on a builtin
+                    type is an error */
+    }
     ints = (int *) ADIOI_Malloc((nints+1)*sizeof(int));
     adds = (MPI_Aint *) ADIOI_Malloc((nadds+1)*sizeof(MPI_Aint));
     types = (MPI_Datatype *) ADIOI_Malloc((ntypes+1)*sizeof(MPI_Datatype));
-    MPI_Type_get_contents(datatype, nints, nadds, ntypes, ints, adds, types);
+    ADIOI_Type_get_contents(datatype, nints, nadds, ntypes, ints, adds, types);
 
   #ifdef FLATTEN_DEBUG
   DBG_FPRINTF(stderr,"ADIOI_Flatten:: st_offset %#llX, curr_index %#llX\n",st_offset,*curr_index);
@@ -153,7 +241,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     #ifdef FLATTEN_DEBUG
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_DUP\n");
     #endif
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 	if ((old_combiner != MPI_COMBINER_NAMED) && (!old_is_contig))
@@ -218,7 +306,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_CONTIGUOUS\n");
     #endif
 	top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -243,7 +331,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 	    num = *curr_index - prev_index;
 
 /* The noncontiguous types have to be replicated count times */
-	    MPI_Type_extent(types[0], &old_extent);
+	    MPI_Type_get_extent(types[0], &lb, &old_extent);
 	    for (m=1; m<top_count; m++) {
 		for (i=0; i<num; i++) {
 		    flat->indices[j] = flat->indices[j-num] + ADIOI_AINT_CAST_TO_OFFSET old_extent;
@@ -263,7 +351,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_VECTOR\n");
     #endif
 	top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -297,7 +385,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 
 /* The noncontiguous types have to be replicated blocklen times
    and then strided. Replicate the first one. */
-	    MPI_Type_extent(types[0], &old_extent);
+	    MPI_Type_get_extent(types[0], &lb, &old_extent);
 	    for (m=1; m<blocklength; m++) {
 		for (i=0; i<num; i++) {
 		    flat->indices[j] = flat->indices[j-num] + ADIOI_AINT_CAST_TO_OFFSET old_extent;
@@ -326,7 +414,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_HVECTOR_INTEGER\n");
     #endif
 	top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -360,7 +448,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 
 /* The noncontiguous types have to be replicated blocklen times
    and then strided. Replicate the first one. */
-	    MPI_Type_extent(types[0], &old_extent);
+	    MPI_Type_get_extent(types[0], &lb, &old_extent);
 	    for (m=1; m<blocklength; m++) {
 		for (i=0; i<num; i++) {
 		    flat->indices[j] = flat->indices[j-num] + ADIOI_AINT_CAST_TO_OFFSET old_extent;
@@ -388,10 +476,10 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_INDEXED\n");
     #endif
 	top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
-	MPI_Type_extent(types[0], &old_extent);
+	MPI_Type_get_extent(types[0], &lb, &old_extent);
 
 	prev_index = *curr_index;
 	if ((old_combiner != MPI_COMBINER_NAMED) && (!old_is_contig))
@@ -494,10 +582,10 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_INDEXED_BLOCK\n");
     #endif
 	top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
-	MPI_Type_extent(types[0], &old_extent);
+	MPI_Type_get_extent(types[0], &lb, &old_extent);
 
 	prev_index = *curr_index;
 	if ((old_combiner != MPI_COMBINER_NAMED) && (!old_is_contig))
@@ -545,7 +633,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 		    if (is_hindexed_block) {
 			/* this is the one place the hindexed case uses the
 			 * extent of a type */
-			MPI_Type_extent(types[0], &old_extent);
+			MPI_Type_get_extent(types[0], &lb, &old_extent);
 		    }
 		    flat->indices[j] = flat->indices[j-num] +
 			ADIOI_AINT_CAST_TO_OFFSET old_extent;
@@ -583,7 +671,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     DBG_FPRINTF(stderr,"ADIOI_Flatten:: MPI_COMBINER_HINDEXED_INTEGER\n");
     #endif
 	top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
         ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -620,7 +708,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 
 /* The noncontiguous types have to be replicated blocklens[i] times
    and then strided. Replicate the first one. */
-	    MPI_Type_extent(types[0], &old_extent);
+	    MPI_Type_get_extent(types[0], &lb, &old_extent);
 	    for (m=1; m<ints[1]; m++) {
 		for (i=0, nonzeroth=j; i<num; i++) {
 		    if (flat->blocklens[j-num] > 0) {
@@ -675,7 +763,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
     #endif
 	top_count = ints[0];
 	for (n=0; n<top_count; n++) {
-	    MPI_Type_get_envelope(types[n], &old_nints, &old_nadds,
+	    ADIOI_Type_get_envelope(types[n], &old_nints, &old_nadds,
 				  &old_ntypes, &old_combiner);
             ADIOI_Datatype_iscontig(types[n], &old_is_contig);
 
@@ -687,7 +775,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 /* simplest case, current type is basic or contiguous types */
         /* By using ADIO_Offset we preserve +/- sign and
            avoid >2G integer arithmetic problems */
-		if (ints[1+n] > 0 || types[n] == MPI_LB || types[n] == MPI_UB) {
+		if (ints[1+n] > 0) {
 		    ADIO_Offset blocklength = ints[1+n];
 		    j = *curr_index;
 		    flat->indices[j] = st_offset + adds[n];
@@ -706,7 +794,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 		num = *curr_index - prev_index;
 
 /* The current type has to be replicated blocklens[n] times */
-		MPI_Type_extent(types[n], &old_extent);
+		MPI_Type_get_extent(types[n], &lb, &old_extent);
 		for (m=1; m<ints[1+n]; m++) {
 		    for (i=0; i<num; i++) {
 			flat->indices[j] =
@@ -746,7 +834,7 @@ void ADIOI_Flatten(MPI_Datatype datatype, ADIOI_Flatlist_node *flat,
 
 	/* handle the datatype */
 
-	MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+	ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
 			      &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -827,16 +915,20 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
     MPI_Aint *adds; /* Make no assumptions about +/- sign on these */
     MPI_Datatype *types;
 
-    MPI_Type_get_envelope(datatype, &nints, &nadds, &ntypes, &combiner);
+    ADIOI_Type_get_envelope(datatype, &nints, &nadds, &ntypes, &combiner);
+    if (combiner == MPI_COMBINER_NAMED) {
+        return 1;  /* builtin types not supposed to be passed to this routine
+                    */
+    }
     ints = (int *) ADIOI_Malloc((nints+1)*sizeof(int));
     adds = (MPI_Aint *) ADIOI_Malloc((nadds+1)*sizeof(MPI_Aint));
     types = (MPI_Datatype *) ADIOI_Malloc((ntypes+1)*sizeof(MPI_Datatype));
-    MPI_Type_get_contents(datatype, nints, nadds, ntypes, ints, adds, types);
+    ADIOI_Type_get_contents(datatype, nints, nadds, ntypes, ints, adds, types);
 
     switch (combiner) {
 #ifdef MPIIMPL_HAVE_MPI_COMBINER_DUP
     case MPI_COMBINER_DUP:
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
                               &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 	if ((old_combiner != MPI_COMBINER_NAMED) && (!old_is_contig))
@@ -895,7 +987,7 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
 #endif
     case MPI_COMBINER_CONTIGUOUS:
         top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
                               &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -919,7 +1011,7 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
     case MPI_COMBINER_HVECTOR:
     case MPI_COMBINER_HVECTOR_INTEGER:
         top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
                               &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -954,7 +1046,7 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
     case MPI_COMBINER_HINDEXED:
     case MPI_COMBINER_HINDEXED_INTEGER:
         top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
                               &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -990,7 +1082,7 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
 #endif
     case MPI_COMBINER_INDEXED_BLOCK:
         top_count = ints[0];
-        MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+        ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
                               &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
@@ -1024,7 +1116,7 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
         top_count = ints[0];
 	count = 0;
 	for (n=0; n<top_count; n++) {
-            MPI_Type_get_envelope(types[n], &old_nints, &old_nadds,
+            ADIOI_Type_get_envelope(types[n], &old_nints, &old_nadds,
                                   &old_ntypes, &old_combiner);
 	    ADIOI_Datatype_iscontig(types[n], &old_is_contig);
 
@@ -1056,7 +1148,7 @@ MPI_Count ADIOI_Count_contiguous_blocks(MPI_Datatype datatype, MPI_Count *curr_i
 	count += 2;
 
 	/* add for datatype */
-	MPI_Type_get_envelope(types[0], &old_nints, &old_nadds,
+	ADIOI_Type_get_envelope(types[0], &old_nints, &old_nadds,
                                   &old_ntypes, &old_combiner);
 	ADIOI_Datatype_iscontig(types[0], &old_is_contig);
 
