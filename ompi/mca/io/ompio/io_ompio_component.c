@@ -42,6 +42,7 @@ int mca_io_ompio_sharedfp_lazy_open = 0;
 int mca_io_ompio_max_aggregators_ratio=8;
 int mca_io_ompio_aggregators_cutoff_threshold=3;
 int mca_io_ompio_overwrite_amode = 1;
+int mca_io_ompio_synchronization_type = 0;
 
 int mca_io_ompio_grouping_option=5;
 
@@ -254,6 +255,18 @@ static int register_component(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_io_ompio_overwrite_amode);
 
+    mca_io_ompio_synchronization_type = 0;
+    (void) mca_base_component_var_register(&mca_io_ompio_component.io_version,
+                                           "synchronization_type",
+                                           "Type of I/O operations (synchronous/asynchronous) "
+                                           "0: Asynchronous, if not available switch to "
+                                           "synchronous function (default) "
+                                           "1: Asynchronous only "
+                                           "2: Synchronous only ",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_io_ompio_synchronization_type);
     return OMPI_SUCCESS;
 }
 

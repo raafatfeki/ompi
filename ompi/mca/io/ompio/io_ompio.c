@@ -660,6 +660,9 @@ int mca_io_ompio_get_mca_parameter_value ( char *mca_parameter_name, int name_le
     else if ( !strncmp ( mca_parameter_name, "aggregators_cutoff_threshold", name_length )) {
         return mca_io_ompio_aggregators_cutoff_threshold;
     }
+    else if ( !strncmp ( mca_parameter_name, "synchronization_type", name_length )) {
+        return mca_io_ompio_synchronization_type;
+    }
     else {
         opal_output (1, "Error in mca_io_ompio_get_mca_parameter_value: unknown parameter name");
     }
