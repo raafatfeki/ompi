@@ -60,8 +60,8 @@ mca_spml_ucx_t mca_spml_ucx = {
         mca_spml_ucx_send,
         mca_spml_base_wait,
         mca_spml_base_wait_nb,
-        mca_spml_ucx_quiet, /* At the moment fence is the same as quite for 
-                               every spml */
+        mca_spml_ucx_fence,
+        mca_spml_ucx_quiet,
         mca_spml_ucx_rmkey_unpack,
         mca_spml_ucx_rmkey_free,
         mca_spml_ucx_rmkey_ptr,
@@ -271,7 +271,7 @@ int mca_spml_ucx_add_procs(ompi_proc_t** procs, size_t nprocs)
     dump_address(my_rank, (char *)wk_local_addr, wk_addr_len);
 
     rc = oshmem_shmem_xchng(wk_local_addr, wk_addr_len, nprocs,
-            (void **)&wk_raddrs, &wk_roffs, &wk_rsizes);
+                            (void **)&wk_raddrs, &wk_roffs, &wk_rsizes);
     if (rc != OSHMEM_SUCCESS) {
         goto error;
     }
@@ -286,13 +286,14 @@ int mca_spml_ucx_add_procs(ompi_proc_t** procs, size_t nprocs)
         ep_params.field_mask = UCP_EP_PARAM_FIELD_REMOTE_ADDRESS;
         ep_params.address    = (ucp_address_t *)(wk_raddrs + wk_roffs[i]);
 
-        err = ucp_ep_create(mca_spml_ucx.ucp_worker, 
-                            &ep_params,
+        err = ucp_ep_create(mca_spml_ucx.ucp_worker, &ep_params,
                             &mca_spml_ucx.ucp_peers[i].ucp_conn);
         if (UCS_OK != err) {
-            SPML_ERROR("ucp_ep_create failed: %s", ucs_status_string(err));
+            SPML_ERROR("ucp_ep_create(proc=%d/%d) failed: %s", n, nprocs,
+                       ucs_status_string(err));
             goto error2;
         }
+
         OSHMEM_PROC_DATA(procs[i])->num_transports = 1;
         OSHMEM_PROC_DATA(procs[i])->transport_ids = spml_ucx_transport_ids;
     }
@@ -519,7 +520,7 @@ int mca_spml_ucx_deregister(sshmem_mkey_t *mkeys)
     spml_ucx_mkey_t   *ucx_mkey;
     map_segment_t *mem_seg;
 
-    MCA_SPML_CALL(fence());
+    MCA_SPML_CALL(quiet());
     if (!mkeys)
         return OSHMEM_SUCCESS;
 
@@ -597,7 +598,7 @@ int mca_spml_ucx_fence(void)
 {
     ucs_status_t err;
 
-    err = ucp_worker_flush(mca_spml_ucx.ucp_worker);
+    err = ucp_worker_fence(mca_spml_ucx.ucp_worker);
     if (UCS_OK != err) {
          SPML_ERROR("fence failed: %s", ucs_status_string(err));
          oshmem_shmem_abort(-1);
