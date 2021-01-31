@@ -30,6 +30,9 @@
 #include "ompi/mca/fcoll/base/base.h"
 #include "ompi/mca/common/ompio/common_ompio.h"
 
+#define FCOLL_VULCAN_SHUFFLE_TAG 123
+#define INIT_LEN 10
+
 BEGIN_C_DECLS
 
 /* Globally exported variables */

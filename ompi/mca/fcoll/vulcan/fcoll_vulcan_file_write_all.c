@@ -34,8 +34,6 @@
 #include <unistd.h>
 
 #define DEBUG_ON 0
-#define FCOLL_VULCAN_SHUFFLE_TAG   123
-#define INIT_LEN 10
 #define NOT_AGGR_INDEX -1
 
 /*Used for loading file-offsets per aggregator*/
@@ -836,7 +834,6 @@ static int shuffle_init ( int index, int cycles, int aggregator, int rank, mca_i
             }
         }
 
-        
         for(l=0;l<data->procs_per_group;l++){
             data->disp_index[l] = 0;
             
