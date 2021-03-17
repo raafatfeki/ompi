@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2015 University of Houston. All rights reserved.
+ * Copyright (c) 2008-2021 University of Houston. All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -28,7 +28,7 @@
 #include "ompi/constants.h"
 #include "ompi/mca/fbtl/fbtl.h"
 
-ssize_t  mca_fbtl_directio_ipwritev (mca_io_ompio_file_t *fh,
+ssize_t  mca_fbtl_directio_ipwritev (ompio_file_t *fh,
 				 ompi_request_t *request)
 {
     return OMPI_SUCCESS;

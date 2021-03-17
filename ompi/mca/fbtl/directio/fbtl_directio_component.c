@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2011 University of Houston. All rights reserved.
+ * Copyright (c) 2008-2021 University of Houston. All rights reserved.
  * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
  *                         reserved.
  * $COPYRIGHT$
@@ -38,6 +38,8 @@ const char *mca_fbtl_directio_component_version_string =
 
 int mca_fbtl_directio_priority = 10;
 
+static int register_component(void);
+
 /*
  * Instantiate the public struct with all of our public information
  * and pointers to our public functions in it
@@ -54,6 +56,7 @@ mca_fbtl_base_component_2_0_0_t mca_fbtl_directio_component = {
         .mca_component_name = "directio",
         MCA_BASE_MAKE_VERSION(component, OMPI_MAJOR_VERSION, OMPI_MINOR_VERSION,
                               OMPI_RELEASE_VERSION),
+        .mca_register_component_params = register_component,
     },
     .fbtlm_data = {
         /* This component is checkpointable */
@@ -63,3 +66,8 @@ mca_fbtl_base_component_2_0_0_t mca_fbtl_directio_component = {
     .fbtlm_file_query = mca_fbtl_directio_component_file_query,      /* get priority and actions */
     .fbtlm_file_unquery = mca_fbtl_directio_component_file_unquery,  /* undo what was done by previous function */
 };
+
+static int register_component(void)
+{
+    return OMPI_SUCCESS;
+}
