@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2018 University of Houston. All rights reserved.
+ * Copyright (c) 2008-2021 University of Houston. All rights reserved.
  * Copyright (c) 2015-2020 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2016-2017 IBM Corporation. All rights reserved.
@@ -70,7 +70,6 @@ mca_fs_lustre_file_open (struct ompi_communicator_t *comm,
     int fs_lustre_stripe_size = -1;
     int fs_lustre_stripe_width = -1;
     char char_stripe[MPI_MAX_INFO_KEY];
-    int fd_direct;
 
     struct lov_user_md *lump=NULL;
 
@@ -150,9 +149,19 @@ mca_fs_lustre_file_open (struct ompi_communicator_t *comm,
     fh->f_flags |= OMPIO_LOCK_NEVER;
     
     if ( mca_fs_lustre_use_directio ) {
-        fd_direct = open ( filename, amode_direct, perm);
-        if ( -1 != fd_direct ) {
-            memcpy ( &fh->f_fs_ptr, &fd_direct, sizeof(int));
+        /*
+            Opening an existing file using MPI_MODE_EXCL and MPI_MODE_CREATE will raise
+            an error. In tests, when opening a file that is still opened with those two flags,
+            open() hangs. Since, MPI_MODE_CREATE has no effect when file exist except if
+            MPI_MODE_EXCL is set, we only need to remove MPI_MODE_EXCL from amode_direct.
+        */
+        if (OMPIO_ROOT == fh->f_rank) {
+            amode_direct &= (~MPI_MODE_EXCL);
+        }
+
+        fh->fd_direct = open ( filename, amode_direct, perm);
+        if ( -1 == fh->fd_direct) {
+            return mca_fs_base_get_mpi_err(errno);
         }
     }
 

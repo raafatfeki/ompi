@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2020 University of Houston. All rights reserved.
+ * Copyright (c) 2008-2021 University of Houston. All rights reserved.
  * Copyright (c) 2018      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2018      DataDirect Networks. All rights reserved.
@@ -149,6 +149,7 @@ struct mca_common_ompio_print_queue;
 struct ompio_file_t {
     /* General parameters */
     int                    fd;
+    int                    fd_direct;
     struct ompi_file_t    *f_fh;     /* pointer back to the file_t structure */
     OMPI_MPI_OFFSET_TYPE   f_offset; /* byte offset of current position */
     OMPI_MPI_OFFSET_TYPE   f_disp;   /* file_view displacement */

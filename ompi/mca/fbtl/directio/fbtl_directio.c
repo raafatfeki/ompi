@@ -30,6 +30,7 @@
 #include <sys/uio.h>
 
 #include "ompi/mca/fbtl/fbtl.h"
+#include "ompi/mca/fbtl/base/base.h"
 #include "ompi/mca/fbtl/directio/fbtl_directio.h"
 
 /*
@@ -38,14 +39,15 @@
  * *******************************************************************
  */
 static mca_fbtl_base_module_1_0_0_t directio =  {
-    mca_fbtl_directio_module_init,     /* initalise after being selected */
-    mca_fbtl_directio_module_finalize, /* close a module on a communicator */
-    mca_fbtl_directio_preadv,          /* blocking read */
-    NULL,                           /* non-blocking read */
-    mca_fbtl_directio_pwritev,         /* blocking write */
-    NULL,                           /* non-blocking write */
-    NULL,                           /* module specific progress */
-    NULL                            /* free module specific data items on the request */
+    mca_fbtl_directio_module_init,      /* initalise after being selected */
+    mca_fbtl_directio_module_finalize,  /* close a module on a communicator */
+    mca_fbtl_directio_preadv,           /* blocking read */
+    NULL,                               /* non-blocking read */
+    mca_fbtl_directio_pwritev,          /* blocking write */
+    NULL,                               /* non-blocking write */
+    NULL,                               /* module specific progress */
+    NULL,                               /* free module specific data items on the request */
+    mca_fbtl_base_check_atomicity       /* check whether atomicity is supported on this fs */
 };
 /*
  * *******************************************************************
@@ -62,13 +64,12 @@ int mca_fbtl_directio_component_init_query(bool enable_progress_threads,
 
 struct mca_fbtl_base_module_1_0_0_t *
 mca_fbtl_directio_component_file_query (ompio_file_t *fh, int *priority) {
-   *priority = mca_fbtl_directio_priority;
+    *priority = mca_fbtl_directio_priority;
 
-   if ( 0 != fh->f_fs_ptr   && 
-        PVFS2 != fh->f_fstype) {
-   }
+    if (-1 != fh->fd_direct) {
+    }
 
-   return &directio;
+    return &directio;
 }
 
 int mca_fbtl_directio_component_file_unquery (ompio_file_t *file) {

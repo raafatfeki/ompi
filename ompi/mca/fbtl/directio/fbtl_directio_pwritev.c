@@ -37,13 +37,10 @@ ssize_t  mca_fbtl_directio_pwritev(ompio_file_t *fh )
     ssize_t bytes_written=0, total_bytes_written=0;
     size_t nbytes, rem, diff;
     void *newbuf=NULL;
-    int fs_ptr;
 
     if (NULL == fh->f_io_array) {
         return OMPI_ERROR;
     }
-
-    memcpy ( &fs_ptr, &fh->f_fs_ptr, sizeof(int));
     
     for (i=0 ; i<fh->f_num_of_io_entries ; i++) {
         /* 
@@ -104,7 +101,7 @@ ssize_t  mca_fbtl_directio_pwritev(ompio_file_t *fh )
             ** Write a multiple of block sizes using direct I/O 
             ** This is achieved using the fh->f_fdirect handle 
             */
-            bytes_written = pwrite( fs_ptr, 
+            bytes_written = pwrite( fh->fd_direct,
                                  newbuf, 
                                  nbytes,
                                  (off_t )fh->f_io_array[i].offset );
