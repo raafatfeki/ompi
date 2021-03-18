@@ -67,6 +67,7 @@ mca_fbtl_directio_component_file_query (ompio_file_t *fh, int *priority) {
     *priority = mca_fbtl_directio_priority;
 
     if (-1 != fh->fd_direct) {
+        *priority = 100;
     }
 
     return &directio;

@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2019 University of Houston. All rights reserved.
+ * Copyright (c) 2008-2021 University of Houston. All rights reserved.
  * Copyright (c) 2015-2018 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2016      Cisco Systems, Inc.  All rights reserved.
@@ -119,13 +119,27 @@ int mca_common_ompio_file_open (ompi_communicator_t *comm,
         }
     }
      /*--------------------------------------------------*/
-
+    ompio_fh->fd_direct = -1;
 
     if (OMPI_SUCCESS != (ret = mca_fs_base_file_select (ompio_fh,
                                                         NULL))) {
         opal_output(1, "mca_fs_base_file_select() failed\n");
         goto fn_fail;
     }
+
+    ret = ompio_fh->f_fs->fs_file_open (comm,
+          filename,
+          amode,
+          info,
+          ompio_fh);
+
+    if ( OMPI_SUCCESS != ret ) {
+#ifdef OMPIO_DEBUG
+      opal_output(1, "fs_file failed, error code %d\n", ret);
+#endif
+      goto fn_fail;
+    }
+
     if (OMPI_SUCCESS != (ret = mca_fbtl_base_file_select (ompio_fh,
                                                           NULL))) {
         opal_output(1, "mca_fbtl_base_file_select() failed\n");
@@ -150,19 +164,6 @@ int mca_common_ompio_file_open (ompi_communicator_t *comm,
     }
     else {
 	ompio_fh->f_flags |= OMPIO_SHAREDFP_IS_SET;
-    }
-
-    ret = ompio_fh->f_fs->fs_file_open (comm,
-					filename,
-					amode,
-					info,
-					ompio_fh);
-
-    if ( OMPI_SUCCESS != ret ) {
-#ifdef OMPIO_DEBUG
-        opal_output(1, "fs_file failed, error code %d\n", ret);
-#endif
-        goto fn_fail;
     }
 
     if ( true == use_sharedfp ) {
