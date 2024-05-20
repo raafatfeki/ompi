@@ -52,6 +52,12 @@ OMPI_DECLSPEC int mca_fbtl_base_init_file (struct ompio_file_t *file);
 OMPI_DECLSPEC int mca_fbtl_base_get_param (struct ompio_file_t *file, int keyval);
 
 OMPI_DECLSPEC bool mca_fbtl_base_check_atomicity (struct ompio_file_t *file);
+
+
+OMPI_DECLSPEC int mca_fbtl_base_get_fbtl_module (struct ompio_file_t *file,
+                                                 const char* fbtl_name,
+                                                 mca_fbtl_base_module_t **module);
+
 /*
  * Globals
  */

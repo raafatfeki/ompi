@@ -54,7 +54,9 @@
     if ( 1==_verbose && 0==_fh->f_rank ) printf("File: %s info: %s value %s %s\n", _fh->f_filename, _infostr, _infoval, _msg); \
     if ( 2==_verbose ) printf("File: %s info: %s value %s %s\n", _fh->f_filename, _infostr, _infoval, _msg); \
     }
-    
+
+#define CUFILE_ERROR_OUTPUT(output_id, output, status) \
+    opal_output(output_id, "%s - %s (%d)\n", output, CUFILE_ERRSTR(status.err), status.err);
 
 /*
  * Flags
@@ -112,7 +114,8 @@ enum ompio_fs_type
     LUSTRE = 3,
     PLFS = 4,
     IME = 5,
-    GPFS = 6
+    GPFS = 6,
+    GDS = 7
 };
 
 typedef struct mca_common_ompio_io_array_t {
@@ -167,6 +170,7 @@ typedef struct ompio_fview_t ompio_fview_t;
 struct ompio_file_t {
     /* General parameters */
     int                    fd;
+    int                    fd_direct;
     struct ompi_file_t    *f_fh;     /* pointer back to the file_t structure */
     uint32_t               f_flags;
     int                    f_rank;

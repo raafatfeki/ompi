@@ -66,10 +66,13 @@ int mca_common_ompio_file_write (ompio_file_t *fh,
     }
 
     bool need_to_copy = false;
-    int is_gpu, is_managed;
-    mca_common_ompio_check_gpu_buf (fh, buf, &is_gpu, &is_managed);
-    if (is_gpu && !is_managed) {
-        need_to_copy = true;
+    mca_fbtl_base_component_t *fbtl_component = (mca_fbtl_base_component_t *) fh->f_fbtl_component;
+    if (strcmp (fbtl_component->fbtlm_version.mca_component_name, "gds")) {
+      int is_gpu, is_managed;
+      mca_common_ompio_check_gpu_buf ( fh, buf, &is_gpu, &is_managed);
+      if ( is_gpu && !is_managed ) {
+          need_to_copy = true;
+      }
     }
 
     if ( !(fh->f_flags & OMPIO_DATAREP_NATIVE ) &&

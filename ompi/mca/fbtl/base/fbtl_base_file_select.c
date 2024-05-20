@@ -260,6 +260,27 @@ int mca_fbtl_base_file_select (struct ompio_file_t *file,
     return err;
 }
 
+int mca_fbtl_base_get_fbtl_module (struct ompio_file_t *file,
+                                   const char* fbtl_name,
+                                   mca_fbtl_base_module_t **module)
+{
+    int priority;
+    mca_base_component_list_item_t *cli;
+    mca_fbtl_base_component_t *component;
+    mca_fbtl_base_module_t *queried_module;
+
+    OPAL_LIST_FOREACH(cli, &ompi_fbtl_base_framework.framework_components, mca_base_component_list_item_t) {
+       component = (mca_fbtl_base_component_t *) cli->cli_component;
+       if (!strcmp (component->fbtlm_version.mca_component_name, fbtl_name)) {
+            queried_module = component->fbtlm_file_query (file, &priority);
+            if(NULL != queried_module && NULL != queried_module->fbtl_module_init) {
+                *module = queried_module;
+                return queried_module->fbtl_module_init(file);
+            }
+       }
+   }
+   return OMPI_ERR_NOT_FOUND;
+}
 
 bool mca_fbtl_base_check_atomicity (struct ompio_file_t *file)
 {
